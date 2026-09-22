@@ -1,6 +1,9 @@
 exports.handler = async function(event) {
-  const MCP_URL = "https://docs.qq.com/openapi/mcp";
   const token = process.env.MCP_TOKEN;
+  console.log("===DEBUG token===", token); // 新增这一行
+  const MCP_URL = "https://docs.qq.com/openapi/mcp";
+  // ...后面代码不动
+
 
   // ========== 下面这两行就是要填两个文档ID的地方 ==========
   const wordFileId = "DQmtjbU1jQk1jempt";
