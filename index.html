@@ -12,12 +12,13 @@
     .tag-薄弱{background:#ef4444}
     .tag-待巩固{background:#f59e0b}
     .tag-已熟练{background:#22c55e}
-    h2{color:#333}
+    h2{color:#333;margin:0 0 8px}
     .phonetic{color:#666;font-style:italic}
     .btn{padding:10px 16px;border:none;border-radius:8px;background:#3b82f6;color:white;font-size:16px;cursor:pointer;margin:5px}
     .tab{margin-bottom:10px}
     .tab button{background:#e2e8f0;border:none;padding:8px 14px;margin-right:6px;border-radius:8px;cursor:pointer}
     .tab button.active{background:#3b82f6;color:white}
+    .filter-line{margin:12px 0}
   </style>
 </head>
 <body>
@@ -26,6 +27,11 @@
     <button class="active" onclick="switchTab('word')">单词</button>
     <button onclick="switchTab('sentence')">句子</button>
   </div>
+  <div class="filter-line">
+    <button onclick="setFilter('all')">全部</button>
+    <button onclick="setFilter('review')" class="active">薄弱+待巩固（复习）</button>
+    <button onclick="setFilter('weak')">只看薄弱</button>
+  </div>
   <div id="container"></div>
 
   <script>
@@ -33,6 +39,7 @@
     let wordList = [];
     let sentenceList = [];
     let currentTab = "word";
+    let filterMode = "review";
 
     // 加载后端数据
     async function loadData(){
@@ -69,8 +76,14 @@
 
     function switchTab(tab){
       currentTab = tab;
-      //切换按钮样式
       document.querySelectorAll(".tab button").forEach(b=>b.classList.remove("active"))
+      event.target.classList.add("active")
+      render();
+    }
+
+    function setFilter(mode){
+      filterMode = mode;
+      document.querySelectorAll(".filter-line button").forEach(b=>b.classList.remove("active"))
       event.target.classList.add("active")
       render();
     }
@@ -78,7 +91,17 @@
     function render(){
       const cont = document.getElementById("container");
       cont.innerHTML = "";
-      const list = currentTab === "word" ? wordList : sentenceList;
+      let list = currentTab === "word" ? wordList : sentenceList;
+
+      // 筛选逻辑
+      if(currentTab === "word"){
+        if(filterMode === "review") list = list.filter(x=>x["单词熟练度标签"] === "薄弱" || x["单词熟练度标签"] === "待巩固");
+        if(filterMode === "weak") list = list.filter(x=>x["单词熟练度标签"] === "薄弱");
+      }else{
+        if(filterMode === "review") list = list.filter(x=>x["句子熟练度标签"] === "薄弱" || x["句子熟练度标签"] === "待巩固");
+        if(filterMode === "weak") list = list.filter(x=>x["句子熟练度标签"] === "薄弱");
+      }
+
       for(let item of list){
         const div = document.createElement("div");
         div.className = "card";
