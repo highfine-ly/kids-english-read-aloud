@@ -58,17 +58,15 @@
       render();
     }
 
-    // 【修复版】Markdown表格解析器，过滤空行
+    // Markdown表格解析器，过滤空行脏数据
     function parseMarkdownTable(md){
       const lines = md.trim().split("\n");
       const rows = [];
       let headers = [];
       for(let line of lines){
         line = line.trim();
-        // 跳过空行、分隔线
         if(!line || line.startsWith("|----")) continue;
         const cells = line.split("|").map(c=>c.trim()).filter(c=>c!=='');
-        // 跳过没有单元格的脏行
         if(cells.length ===0) continue;
         if(headers.length === 0){
           headers = cells;
@@ -77,10 +75,7 @@
           for(let i=0;i<headers.length;i++){
             obj[headers[i]] = cells[i] ?? "";
           }
-          // 过滤空数据行（单词为空就丢弃这一行）
-          if(obj["单词"] && obj["单词"].length>0){
-            rows.push(obj);
-          }
+          rows.push(obj);
         }
       }
       return rows;
@@ -103,26 +98,35 @@
     function render(){
       const cont = document.getElementById("container");
       cont.innerHTML = "";
-      let list = currentTab === "word" ? wordList : sentenceList;
+      let sourceList = currentTab === "word" ? wordList : sentenceList;
+      let list = [...sourceList];
 
-      // 筛选逻辑
-      if(currentTab === "word"){
-        if(filterMode === "review") list = list.filter(x=>x["单词熟练度标签"] === "薄弱" || x["单词熟练度标签"] === "待巩固");
-        if(filterMode === "weak") list = list.filter(x=>x["单词熟练度标签"] === "薄弱");
-      }else{
-        if(filterMode === "review") list = list.filter(x=>x["句子熟练度标签"] === "薄弱" || x["句子熟练度标签"] === "待巩固");
-        if(filterMode === "weak") list = list.filter(x=>x["句子熟练度标签"] === "薄弱");
+      // =========修复这里！all模式不做任何过滤=========
+      if(filterMode === "review"){
+        if(currentTab === "word"){
+          list = list.filter(x=>x["单词熟练度标签"] === "薄弱" || x["单词熟练度标签"] === "待巩固");
+        }else{
+          list = list.filter(x=>x["句子熟练度标签"] === "薄弱" || x["句子熟练度标签"] === "待巩固");
+        }
+      }else if(filterMode === "weak"){
+        if(currentTab === "word"){
+          list = list.filter(x=>x["单词熟练度标签"] === "薄弱");
+        }else{
+          list = list.filter(x=>x["句子熟练度标签"] === "薄弱");
+        }
       }
+      // filterMode == all 的时候，直接保留原始list，不做过滤
 
+      // 渲染卡片
       for(let item of list){
         const div = document.createElement("div");
         div.className = "card";
         if(currentTab === "word"){
           div.innerHTML = `
-            <h2>${item["单词"]}</h2>
+            <h2>${item["单词"] || ""}</h2>
             <div class="phonetic">音标：${item["音标"]||"—"}</div>
             <div>词性：${item["词性"]||"—"}</div>
-            <span class="tag tag-${item["单词熟练度标签"]}">${item["单词熟练度标签"]}</span>
+            <span class="tag tag-${item["单词熟练度标签"]}">${item["单词熟练度标签"]||"未标记"}</span>
             <br>
             <button class="btn" onclick="readText('${item["单词"]}')">🔊 朗读</button>
             <button class="btn btn-record" onclick="toggleRecord(this)">🎙️ 开始录音</button>
@@ -130,10 +134,10 @@
           `
         }else{
           div.innerHTML = `
-            <h2>${item["句子原句"]}</h2>
+            <h2>${item["句子原句"] || ""}</h2>
             <div>分类：${item["句子分类"]||"—"}</div>
             <div>可替换词：${item["可替换词"]||"—"}</div>
-            <span class="tag tag-${item["句子熟练度标签"]}">${item["句子熟练度标签"]}</span>
+            <span class="tag tag-${item["句子熟练度标签"]}">${item["句子熟练度标签"]||"未标记"}</span>
             <br>
             <button class="btn" onclick="readText('${item["句子原句"]}')">🔊 朗读句子</button>
             <button class="btn btn-record" onclick="toggleRecord(this)">🎙️ 开始录音</button>
@@ -146,17 +150,17 @@
 
     //浏览器自带语音朗读
     function readText(text){
+      if(!text) return;
       const utter = new SpeechSynthesisUtterance(text);
       utter.lang = "en-US";
       speechSynthesis.speak(utter);
     }
 
-    //录音开关（修复：不再传文本参数，直接取当前卡片文字）
+    //录音开关
     async function toggleRecord(btn){
       const card = btn.closest(".card");
       const audioElement = btn.nextElementSibling;
       if(!isRecording){
-        //开始录音
         const stream = await navigator.mediaDevices.getUserMedia({audio:true});
         mediaRecorder = new MediaRecorder(stream);
         audioChunks = [];
@@ -170,7 +174,6 @@
         isRecording = true;
         btn.innerText = "⏹️ 停止录音";
       }else{
-        //停止录音
         mediaRecorder.stop();
         isRecording = false;
         btn.innerText = "🎙️ 开始录音";
