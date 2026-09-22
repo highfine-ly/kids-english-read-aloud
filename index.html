@@ -2,10 +2,116 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>少儿英语跟读训练</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: system-ui, sans-serif;
+        }
+        body {
+            max-width: 700px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        .sentence-card {
+            background: #f0f7ff;
+            padding: 30px;
+            border-radius:16px;
+            margin:20px 0;
+        }
+        .english {
+            font-size: 28px;
+            font-weight:bold;
+        }
+        .chinese {
+            font-size:18px;
+            color:#444;
+            margin-top:12px;
+        }
+        button {
+            padding:12px 24px;
+            font-size:18px;
+            border:none;
+            border-radius:10px;
+            cursor:pointer;
+            margin-right:10px;
+        }
+        #recordBtn {
+            background:#2563eb;
+            color:white;
+        }
+        #nextBtn {
+            background:#22aa66;
+            color:white;
+        }
+    </style>
 </head>
 <body>
     <h1>少儿英语跟读训练工具</h1>
-    <div>状态：项目初始化完成，待接入腾讯文档例句库</div>
+
+    <div class="sentence-card">
+        <div class="english" id="engSentence">Where do you live?</div>
+        <div class="chinese" id="cnSentence">你住在哪里？</div>
+    </div>
+
+    <div>
+        <button id="recordBtn">开始录音跟读</button>
+        <button id="nextBtn">下一句</button>
+    </div>
+    <p id="status">等待操作</p>
+
+    <script>
+        // 临时写死的例句，后面替换成MCP读取的数据
+        const sentenceList = [
+            {en:"Where do you live?", cn:"你住在哪里？"},
+            {en:"Owls come out at night", cn:"猫头鹰在夜晚出来活动"}
+        ];
+        let currentIndex = 0;
+
+        const engDom = document.getElementById("engSentence");
+        const cnDom = document.getElementById("cnSentence");
+        const statusDom = document.getElementById("status");
+        const recordBtn = document.getElementById("recordBtn");
+        const nextBtn = document.getElementById("nextBtn");
+
+        // 切换句子
+        function showSentence(){
+            const item = sentenceList[currentIndex];
+            engDom.innerText = item.en;
+            cnDom.innerText = item.cn;
+        }
+        showSentence();
+
+        nextBtn.onclick = function(){
+            currentIndex = (currentIndex +1) % sentenceList.length;
+            showSentence();
+            statusDom.innerText = "等待操作";
+        }
+
+        // 浏览器录音API
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+
+        recordBtn.onclick = async function(){
+            if(!isRecording){
+                // 开启麦克风
+                const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                mediaRecorder.ondataavailable = e=> audioChunks.push(e.data);
+                mediaRecorder.start();
+                isRecording = true;
+                this.innerText = "停止录音";
+                statusDom.innerText = "🎙️正在录音，请朗读句子";
+            }else{
+                mediaRecorder.stop();
+                isRecording = false;
+                this.innerText = "开始录音跟读";
+                statusDom.innerText = "✅录音完成（暂未打分）";
+            }
+        }
+    </script>
 </body>
 </html>
