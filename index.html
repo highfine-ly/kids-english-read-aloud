@@ -101,7 +101,7 @@
       let sourceList = currentTab === "word" ? wordList : sentenceList;
       let list = [...sourceList];
 
-      // =========修复这里！all模式不做任何过滤=========
+      // ========== 筛选逻辑，恢复【单词熟练度标签 / 句子熟练度标签】==========
       if(filterMode === "review"){
         if(currentTab === "word"){
           list = list.filter(x=>x["单词熟练度标签"] === "薄弱" || x["单词熟练度标签"] === "待巩固");
@@ -115,7 +115,7 @@
           list = list.filter(x=>x["句子熟练度标签"] === "薄弱");
         }
       }
-      // filterMode == all 的时候，直接保留原始list，不做过滤
+      // all模式：不做过滤，展示全部
 
       // 渲染卡片
       for(let item of list){
