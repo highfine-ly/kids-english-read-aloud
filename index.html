@@ -20,6 +20,8 @@
     .tab button{background:#e2e8f0;border:none;padding:8px 14px;margin-right:6px;border-radius:8px;cursor:pointer}
     .tab button.active{background:#3b82f6;color:white}
     .filter-line{margin:12px 0}
+    .filter-line button{background:#e2e8f0;border:none;padding:8px 14px;margin-right:6px;border-radius:8px;cursor:pointer}
+    .filter-line button.active{background:#3b82f6;color:white}
   </style>
 </head>
 <body>
@@ -89,18 +91,15 @@
       return rows;
     }
 
+    // 修改：直接传入tab名称，不再读取event
     function switchTab(tab){
       currentTab = tab;
-      // 切换按钮active样式
-      document.querySelectorAll(".tab button").forEach(b=>b.classList.remove("active"));
-      event.target.classList.add("active");
       render();
     }
 
+    // 修改：直接传入过滤模式，不再读取event
     function setFilter(mode){
       filterMode = mode;
-      document.querySelectorAll(".filter-line button").forEach(b=>b.classList.remove("active"));
-      event.target.classList.add("active");
       render();
     }
 
@@ -136,7 +135,7 @@
             <div>词性：${item["词性"]||"—"}</div>
             <span class="tag tag-${item["单词熟练度标签"]}">${item["单词熟练度标签"]||"未标记"}</span>
             <br>
-            <button class="btn" onclick="readText('${item["单词"]}')">🔊 朗读</button>
+            <button class="btn" onclick="readText('${(item["单词"]||"").replace(/'/g,"\\'")}')">🔊 朗读</button>
             <button class="btn btn-record" onclick="toggleRecord(this)">🎙️ 开始录音</button>
             <audio controls style="margin-top:8px;display:block;">
           `
@@ -147,13 +146,26 @@
             <div>可替换词：${item["可替换词"]||"—"}</div>
             <span class="tag tag-${item["句子熟练度标签"]}">${item["句子熟练度标签"]||"未标记"}</span>
             <br>
-            <button class="btn" onclick="readText('${item["句子原句"]}')">🔊 朗读句子</button>
+            <button class="btn" onclick="readText('${(item["句子原句"]||"").replace(/'/g,"\\'")}')">🔊 朗读句子</button>
             <button class="btn btn-record" onclick="toggleRecord(this)">🎙️ 开始录音</button>
             <audio controls style="margin-top:8px;display:block;">
           `
         }
         cont.appendChild(div);
       }
+
+      // 渲染完成后，更新按钮active高亮状态
+      // Tab按钮高亮
+      document.querySelectorAll(".tab button").forEach(btn=>{
+        btn.classList.remove("active");
+      })
+      document.querySelector(`.tab button[onclick*="${currentTab}"]`)?.classList.add("active");
+
+      // Filter按钮高亮
+      document.querySelectorAll(".filter-line button").forEach(btn=>{
+        btn.classList.remove("active");
+      })
+      document.querySelector(`.filter-line button[onclick*="${filterMode}"]`)?.classList.add("active");
     }
 
     // 朗读
