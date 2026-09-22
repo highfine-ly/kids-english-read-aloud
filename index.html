@@ -1,117 +1,118 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>少儿英语跟读训练</title>
-    <style>
-        * {
-            box-sizing: border-box;
-            font-family: system-ui, sans-serif;
-        }
-        body {
-            max-width: 700px;
-            margin: 40px auto;
-            padding: 0 20px;
-        }
-        .sentence-card {
-            background: #f0f7ff;
-            padding: 30px;
-            border-radius:16px;
-            margin:20px 0;
-        }
-        .english {
-            font-size: 28px;
-            font-weight:bold;
-        }
-        .chinese {
-            font-size:18px;
-            color:#444;
-            margin-top:12px;
-        }
-        button {
-            padding:12px 24px;
-            font-size:18px;
-            border:none;
-            border-radius:10px;
-            cursor:pointer;
-            margin-right:10px;
-        }
-        #recordBtn {
-            background:#2563eb;
-            color:white;
-        }
-        #nextBtn {
-            background:#22aa66;
-            color:white;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>少儿英语跟读</title>
+  <style>
+    *{box-sizing:border-box;font-family:system-ui}
+    body{padding:20px;max-width:800px;margin:0 auto;background:#f7f9fc}
+    .card{background:white;padding:24px;border-radius:16px;box-shadow:0 2px 10px #00000015;margin:16px 0}
+    .tag{display:inline-block;padding:4px 10px;border-radius:12px;font-size:12px;color:#fff;margin:4px}
+    .tag-薄弱{background:#ef4444}
+    .tag-待巩固{background:#f59e0b}
+    .tag-已熟练{background:#22c55e}
+    h2{color:#333}
+    .phonetic{color:#666;font-style:italic}
+    .btn{padding:10px 16px;border:none;border-radius:8px;background:#3b82f6;color:white;font-size:16px;cursor:pointer;margin:5px}
+    .tab{margin-bottom:10px}
+    .tab button{background:#e2e8f0;border:none;padding:8px 14px;margin-right:6px;border-radius:8px;cursor:pointer}
+    .tab button.active{background:#3b82f6;color:white}
+  </style>
 </head>
 <body>
-    <h1>少儿英语跟读训练工具</h1>
+  <h1>英语单词 & 句子跟读</h1>
+  <div class="tab">
+    <button class="active" onclick="switchTab('word')">单词</button>
+    <button onclick="switchTab('sentence')">句子</button>
+  </div>
+  <div id="container"></div>
 
-    <div class="sentence-card">
-        <div class="english" id="engSentence">Where do you live?</div>
-        <div class="chinese" id="cnSentence">你住在哪里？</div>
-    </div>
+  <script>
+    const API_URL = "/.netlify/functions/getSentences";
+    let wordList = [];
+    let sentenceList = [];
+    let currentTab = "word";
 
-    <div>
-        <button id="recordBtn">开始录音跟读</button>
-        <button id="nextBtn">下一句</button>
-    </div>
-    <p id="status">等待操作</p>
+    // 加载后端数据
+    async function loadData(){
+      const res = await fetch(API_URL);
+      const json = await res.json();
+      // 解析单词markdown表格
+      wordList = parseMarkdownTable(json.wordLib.result.structuredContent.content);
+      // 解析句子markdown表格
+      sentenceList = parseMarkdownTable(json.sentenceLib.result.structuredContent.content);
+      render();
+    }
 
-    <script>
-        // 临时写死的例句，后面替换成MCP读取的数据
-        const sentenceList = [
-            {en:"Where do you live?", cn:"你住在哪里？"},
-            {en:"Owls come out at night", cn:"猫头鹰在夜晚出来活动"}
-        ];
-        let currentIndex = 0;
-
-        const engDom = document.getElementById("engSentence");
-        const cnDom = document.getElementById("cnSentence");
-        const statusDom = document.getElementById("status");
-        const recordBtn = document.getElementById("recordBtn");
-        const nextBtn = document.getElementById("nextBtn");
-
-        // 切换句子
-        function showSentence(){
-            const item = sentenceList[currentIndex];
-            engDom.innerText = item.en;
-            cnDom.innerText = item.cn;
+    // 简易Markdown表格解析器
+    function parseMarkdownTable(md){
+      const lines = md.trim().split("\n");
+      const rows = [];
+      let headers = [];
+      for(let line of lines){
+        line = line.trim();
+        if(!line || line.startsWith("|----")) continue;
+        const cells = line.split("|").map(c=>c.trim()).filter(c=>c!=='');
+        if(headers.length === 0){
+          headers = cells;
+        }else{
+          const obj = {};
+          for(let i=0;i<headers.length;i++){
+            obj[headers[i]] = cells[i] ?? "";
+          }
+          rows.push(obj);
         }
-        showSentence();
+      }
+      return rows;
+    }
 
-        nextBtn.onclick = function(){
-            currentIndex = (currentIndex +1) % sentenceList.length;
-            showSentence();
-            statusDom.innerText = "等待操作";
+    function switchTab(tab){
+      currentTab = tab;
+      //切换按钮样式
+      document.querySelectorAll(".tab button").forEach(b=>b.classList.remove("active"))
+      event.target.classList.add("active")
+      render();
+    }
+
+    function render(){
+      const cont = document.getElementById("container");
+      cont.innerHTML = "";
+      const list = currentTab === "word" ? wordList : sentenceList;
+      for(let item of list){
+        const div = document.createElement("div");
+        div.className = "card";
+        if(currentTab === "word"){
+          div.innerHTML = `
+            <h2>${item["单词"]}</h2>
+            <div class="phonetic">音标：${item["音标"]||"—"}</div>
+            <div>词性：${item["词性"]||"—"}</div>
+            <span class="tag tag-${item["单词熟练度标签"]}">${item["单词熟练度标签"]}</span>
+            <br>
+            <button class="btn" onclick="readText('${item["单词"]}')">🔊 朗读</button>
+          `
+        }else{
+          div.innerHTML = `
+            <h2>${item["句子原句"]}</h2>
+            <div>分类：${item["句子分类"]}</div>
+            <div>可替换词：${item["可替换词"]}</div>
+            <span class="tag tag-${item["句子熟练度标签"]}">${item["句子熟练度标签"]}</span>
+            <br>
+            <button class="btn" onclick="readText('${item["句子原句"]}')">🔊 朗读句子</button>
+          `
         }
+        cont.appendChild(div);
+      }
+    }
 
-        // 浏览器录音API
-        let mediaRecorder;
-        let audioChunks = [];
-        let isRecording = false;
+    //浏览器自带语音朗读
+    function readText(text){
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = "en-US";
+      speechSynthesis.speak(utter);
+    }
 
-        recordBtn.onclick = async function(){
-            if(!isRecording){
-                // 开启麦克风
-                const stream = await navigator.mediaDevices.getUserMedia({audio:true});
-                mediaRecorder = new MediaRecorder(stream);
-                audioChunks = [];
-                mediaRecorder.ondataavailable = e=> audioChunks.push(e.data);
-                mediaRecorder.start();
-                isRecording = true;
-                this.innerText = "停止录音";
-                statusDom.innerText = "🎙️正在录音，请朗读句子";
-            }else{
-                mediaRecorder.stop();
-                isRecording = false;
-                this.innerText = "开始录音跟读";
-                statusDom.innerText = "✅录音完成（暂未打分）";
-            }
-        }
-    </script>
+    loadData();
+  </script>
 </body>
 </html>
