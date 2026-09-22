@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>少儿英语跟读</title>
+  <title>少儿英语跟读卡片</title>
   <style>
     *{box-sizing:border-box;font-family:system-ui}
     body{padding:20px;max-width:800px;margin:0 auto;background:#f7f9fc}
@@ -52,38 +52,40 @@
       const res = await fetch(API_URL);
       const json = await res.json();
       console.log("完整返回json：",json);
-      console.log("wordLib structuredContent：", json.wordLib.result.structuredContent, typeof json.wordLib.result.structuredContent);
-      console.log("sentenceLib structuredContent：", json.sentenceLib.result.structuredContent, typeof json.sentenceLib.result.structuredContent);
-      // 解析单词表格
-      wordList = parseMarkdownTable(json.wordLib.result.structuredContent);
-      // 解析句子表格
-      sentenceList = parseMarkdownTable(json.sentenceLib.result.structuredContent);
+
+      // ========== 修复点：读取 .content 字段 ==========
+      const wordMdText = json.wordLib.result.structuredContent.content;
+      const sentenceMdText = json.sentenceLib.result.structuredContent.content;
+
+      console.log("原始单词md全文 >>>", wordMdText);
+      console.log("原始句子md全文 >>>", sentenceMdText);
+
+      wordList = parseMarkdownTable(wordMdText);
+      sentenceList = parseMarkdownTable(sentenceMdText);
+
       console.log("解析后的单词列表",wordList);
       console.log("解析后的句子列表",sentenceList);
       render();
     }
 
-    // 【新版！修复表头错位问题】Markdown表格解析
+    // 适配腾讯文档导出markdown表格解析器
     function parseMarkdownTable(md){
       if (md === null || md === undefined || typeof md !== "string") {
         return [];
       }
-      const lines = md.trim().split("\n");
-      // 找到分隔线 |---- 所在行下标
+      const lines = md.trim().split("\n").filter(line=>line.trim()!=='');
       let sepIndex = -1;
       for(let i=0; i<lines.length; i++){
-        if(lines[i].includes("|----")){
+        if(lines[i].includes("---")){
           sepIndex = i;
           break;
         }
       }
       if(sepIndex < 1) return [];
-      // 分隔线的上一行 = 表头
       const headerLine = lines[sepIndex -1];
       const headersRaw = headerLine.split("|").map(c=>c.trim()).filter(c=>c!=='');
 
       const rows = [];
-      // 分隔线之后全部是数据行
       for(let i = sepIndex +1; i<lines.length; i++){
         const line = lines[i].trim();
         if(!line) continue;
@@ -129,6 +131,7 @@
         }
       }
 
+      console.log("筛选后剩余条数：", list.length, list);
       // 渲染卡片
       for(let item of list){
         const div = document.createElement("div");
@@ -159,21 +162,20 @@
         cont.appendChild(div);
       }
 
-      // 渲染完成后，更新按钮active高亮状态
-      // Tab按钮高亮
+      // Tab高亮
       document.querySelectorAll(".tab button").forEach(btn=>{
         btn.classList.remove("active");
       })
       document.querySelector(`.tab button[onclick*="${currentTab}"]`)?.classList.add("active");
 
-      // Filter按钮高亮
+      // 筛选按钮高亮
       document.querySelectorAll(".filter-line button").forEach(btn=>{
         btn.classList.remove("active");
       })
       document.querySelector(`.filter-line button[onclick*="${filterMode}"]`)?.classList.add("active");
     }
 
-    // 朗读
+    // 文本朗读
     function readText(text){
       if(!text) return;
       const utter = new SpeechSynthesisUtterance(text);
@@ -181,7 +183,7 @@
       speechSynthesis.speak(utter);
     }
 
-    // 录音
+    // 录音启停
     async function toggleRecord(btn){
       const audioElement = btn.nextElementSibling.nextElementSibling;
       if(!isRecording){
@@ -204,6 +206,7 @@
       }
     }
 
+    // 页面加载自动拉取数据
     loadData();
   </script>
 </body>
