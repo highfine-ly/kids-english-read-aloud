@@ -30,7 +30,7 @@
   </div>
   <div class="filter-line">
     <button onclick="setFilter('all')">全部</button>
-    <button onclick="setFilter('review')" class="active">薄弱+待巩固（复习）</button>
+    <button class="active" onclick="setFilter('review')">薄弱+待巩固（复习）</button>
     <button onclick="setFilter('weak')">只看薄弱</button>
   </div>
   <div id="container"></div>
@@ -42,56 +42,65 @@
     let currentTab = "word";
     let filterMode = "review";
 
-    //录音全局变量
     let mediaRecorder;
     let audioChunks = [];
     let isRecording = false;
 
-    // 加载后端数据
     async function loadData(){
       const res = await fetch(API_URL);
       const json = await res.json();
-      // 解析单词markdown表格
-      wordList = parseMarkdownTable(json.wordLib.result.structuredContent.content);
-      // 解析句子markdown表格
-      sentenceList = parseMarkdownTable(json.sentenceLib.result.structuredContent.content);
+      // 解析单词表格
+      wordList = parseMarkdownTable(json.wordLib.result.structuredContent);
+      // 解析句子表格
+      sentenceList = parseMarkdownTable(json.sentenceLib.result.structuredContent);
       render();
     }
 
-    // Markdown表格解析器，过滤空行脏数据
+    // 新版Markdown表格解析，自动跳过工作表标题行
     function parseMarkdownTable(md){
       const lines = md.trim().split("\n");
-      const rows = [];
-      let headers = [];
-      for(let line of lines){
-        line = line.trim();
-        if(!line || line.startsWith("|----")) continue;
-        const cells = line.split("|").map(c=>c.trim()).filter(c=>c!=='');
-        if(cells.length ===0) continue;
-        if(headers.length === 0){
-          headers = cells;
-        }else{
-          const obj = {};
-          for(let i=0;i<headers.length;i++){
-            obj[headers[i]] = cells[i] ?? "";
-          }
-          rows.push(obj);
+      let tableLines = [];
+      let startIndex = -1;
+      // 找到第一个包含 |---- 的分隔线，它的上一行就是表头
+      for(let i=0; i<lines.length; i++){
+        if(lines[i].includes("|----")){
+          startIndex = i - 1;
+          break;
         }
+      }
+      if(startIndex <0) return [];
+      // 从表头行开始读取表格
+      for(let i = startIndex; i<lines.length; i++){
+        const line = lines[i].trim();
+        if(!line) continue;
+        tableLines.push(line);
+      }
+      const headersRaw = tableLines[0].split("|").map(c=>c.trim()).filter(c=>c!=='');
+      const rows = [];
+      for(let i=2; i<tableLines.length; i++){
+        const cells = tableLines[i].split("|").map(c=>c.trim()).filter(c=>c!=='');
+        if(cells.length === 0) continue;
+        const obj = {};
+        for(let j=0; j<headersRaw.length; j++){
+          obj[headersRaw[j]] = cells[j] || "";
+        }
+        rows.push(obj);
       }
       return rows;
     }
 
     function switchTab(tab){
       currentTab = tab;
-      document.querySelectorAll(".tab button").forEach(b=>b.classList.remove("active"))
-      event.target.classList.add("active")
+      // 切换按钮active样式
+      document.querySelectorAll(".tab button").forEach(b=>b.classList.remove("active"));
+      event.target.classList.add("active");
       render();
     }
 
     function setFilter(mode){
       filterMode = mode;
-      document.querySelectorAll(".filter-line button").forEach(b=>b.classList.remove("active"))
-      event.target.classList.add("active")
+      document.querySelectorAll(".filter-line button").forEach(b=>b.classList.remove("active"));
+      event.target.classList.add("active");
       render();
     }
 
@@ -101,7 +110,7 @@
       let sourceList = currentTab === "word" ? wordList : sentenceList;
       let list = [...sourceList];
 
-      // ========== 筛选逻辑，恢复【单词熟练度标签 / 句子熟练度标签】==========
+      // 筛选逻辑
       if(filterMode === "review"){
         if(currentTab === "word"){
           list = list.filter(x=>x["单词熟练度标签"] === "薄弱" || x["单词熟练度标签"] === "待巩固");
@@ -115,7 +124,6 @@
           list = list.filter(x=>x["句子熟练度标签"] === "薄弱");
         }
       }
-      // all模式：不做过滤，展示全部
 
       // 渲染卡片
       for(let item of list){
@@ -148,7 +156,7 @@
       }
     }
 
-    //浏览器自带语音朗读
+    // 朗读
     function readText(text){
       if(!text) return;
       const utter = new SpeechSynthesisUtterance(text);
@@ -156,10 +164,9 @@
       speechSynthesis.speak(utter);
     }
 
-    //录音开关
+    // 录音
     async function toggleRecord(btn){
-      const card = btn.closest(".card");
-      const audioElement = btn.nextElementSibling;
+      const audioElement = btn.nextElementSibling.nextElementSibling;
       if(!isRecording){
         const stream = await navigator.mediaDevices.getUserMedia({audio:true});
         mediaRecorder = new MediaRecorder(stream);
